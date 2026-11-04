@@ -19,6 +19,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CompanyLogo } from '@/components/company-logo';
 import {
@@ -31,6 +38,7 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  Check,
   ChevronLeft,
   ChevronRight,
   Search,
@@ -284,6 +292,26 @@ const GENERAL_DATA_COLUMNS: ColumnKey[] = [
   'subsector',
   'segment',
 ];
+
+function ThemedCheckbox({
+  className,
+  ...props
+}: Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'>) {
+  return (
+    <span className="relative inline-flex h-4 w-4 shrink-0">
+      <input
+        type="checkbox"
+        className={`peer h-4 w-4 cursor-pointer appearance-none rounded-[5px] border border-mist-700 bg-mist-950 transition-colors group-hover/check:border-mist-500 checked:border-emerald-500 checked:bg-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 disabled:cursor-not-allowed disabled:border-mist-700 disabled:bg-mist-800 ${className ?? ''}`}
+        {...props}
+      />
+      <Check
+        aria-hidden
+        strokeWidth={3}
+        className="pointer-events-none absolute inset-0 m-auto h-3 w-3 text-mist-950 opacity-0 transition-opacity peer-checked:opacity-100 peer-disabled:text-stone-500"
+      />
+    </span>
+  );
+}
 
 const PRESET_CONFIG: Record<
   RankingPreset,
@@ -823,20 +851,44 @@ export function StocksRankingTable({
           </div>
 
           <div>
-            <select
-              data-testid="sort-select"
+            <Select
               value={filters.rankingPreset}
-              onChange={(e) =>
-                handleRankingPresetChange(e.target.value as RankingPreset)
+              onValueChange={(value) =>
+                handleRankingPresetChange(value as RankingPreset)
               }
-              className="flex h-9 w-full rounded-lg border border-mist-800 bg-mist-950 px-3 py-1 text-xs font-medium text-stone-200 focus:outline-none focus:ring-1 focus:ring-mist-600"
             >
-              {(Object.keys(PRESET_CONFIG) as RankingPreset[]).map((key) => (
-                <option key={key} value={key} className="bg-mist-900 text-stone-100">
-                  Ranking por: {PRESET_CONFIG[key].label}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger data-testid="sort-select" aria-label="Ranking por">
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <span className="shrink-0 text-stone-500">Ranking por</span>
+                  <span className="truncate font-semibold text-stone-100">
+                    <SelectValue />
+                  </span>
+                </span>
+              </SelectTrigger>
+              <SelectContent>
+                {(Object.keys(PRESET_CONFIG) as RankingPreset[]).map((key) => {
+                  const match = PRESET_CONFIG[key].label.match(/^(\d+)\.\s*(.*)$/);
+                  const number = match?.[1];
+                  const text = match?.[2] ?? PRESET_CONFIG[key].label;
+                  return (
+                    <SelectItem
+                      key={key}
+                      value={key}
+                      data-testid={`sort-option-${key}`}
+                      leading={
+                        number ? (
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-mist-700 bg-mist-950 text-[10px] font-bold tabular-nums text-stone-400">
+                            {number}
+                          </span>
+                        ) : null
+                      }
+                    >
+                      {text}
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex items-center gap-2">
@@ -862,19 +914,29 @@ export function StocksRankingTable({
                 </>
               )}
             </Button>
-            <select
-              data-testid="limit-select"
-              value={filters.limit}
-              onChange={(e) =>
-                onUpdateFilters({ limit: Number(e.target.value), page: 1 })
+            <Select
+              value={String(filters.limit)}
+              onValueChange={(value) =>
+                onUpdateFilters({ limit: Number(value), page: 1 })
               }
-              className="flex h-9 rounded-lg border border-mist-800 bg-mist-950 px-2 py-1 text-xs font-medium text-stone-200 focus:outline-none"
             >
-              <option value={25} className="bg-mist-900 text-stone-100">25 / pág</option>
-              <option value={50} className="bg-mist-900 text-stone-100">50 / pág</option>
-              <option value={100} className="bg-mist-900 text-stone-100">100 / pág</option>
-              <option value={200} className="bg-mist-900 text-stone-100">200 / pág</option>
-            </select>
+              <SelectTrigger
+                data-testid="limit-select"
+                aria-label="Itens por página"
+                className="w-[104px] shrink-0"
+              >
+                <span className="font-semibold text-stone-100">
+                  <SelectValue />
+                </span>
+              </SelectTrigger>
+              <SelectContent align="end">
+                {[20, 50, 100, 200].map((size) => (
+                  <SelectItem key={size} value={String(size)}>
+                    {size} / pág
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -916,10 +978,9 @@ export function StocksRankingTable({
                 <h4 className="mb-2.5 text-xs font-bold uppercase tracking-wider text-stone-200">
                   Configurações
                 </h4>
-                <div className="space-y-2.5">
-                  <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-stone-300 hover:text-stone-100">
-                    <input
-                      type="checkbox"
+                <div className="space-y-0.5">
+                  <label className="group/check -mx-2 flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-xs font-medium text-stone-300 transition-colors hover:bg-mist-900 hover:text-stone-100 has-[:disabled]:cursor-default has-[:disabled]:hover:bg-transparent">
+                    <ThemedCheckbox
                       data-testid="config-small-caps"
                       checked={filters.onlySmallCaps}
                       onChange={(e) =>
@@ -928,13 +989,11 @@ export function StocksRankingTable({
                           page: 1,
                         })
                       }
-                      className="h-4 w-4 rounded border-mist-700 bg-mist-800 text-stone-100 accent-mist-500"
                     />
                     Apenas Small Caps
                   </label>
-                  <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-stone-300 hover:text-stone-100">
-                    <input
-                      type="checkbox"
+                  <label className="group/check -mx-2 flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-xs font-medium text-stone-300 transition-colors hover:bg-mist-900 hover:text-stone-100 has-[:disabled]:cursor-default has-[:disabled]:hover:bg-transparent">
+                    <ThemedCheckbox
                       data-testid="config-one-per-company"
                       checked={filters.oneStockPerCompany}
                       onChange={(e) =>
@@ -943,7 +1002,6 @@ export function StocksRankingTable({
                           page: 1,
                         })
                       }
-                      className="h-4 w-4 rounded border-mist-700 bg-mist-800 text-stone-100 accent-mist-500"
                     />
                     Uma Ação por empresa
                   </label>
@@ -959,21 +1017,19 @@ export function StocksRankingTable({
                     PRO
                   </Badge>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-0.5">
                   {ADVANCED_PRO_COLUMNS.map((colKey) => {
                     const col = ALL_COLUMNS_MAP[colKey];
                     const checked = customColumns.includes(colKey);
                     return (
                       <label
                         key={colKey}
-                        className="flex cursor-pointer items-center gap-2 text-xs font-medium text-stone-300 hover:text-stone-100"
+                        className="group/check -mx-2 flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-xs font-medium text-stone-300 transition-colors hover:bg-mist-900 hover:text-stone-100 has-[:disabled]:cursor-default has-[:disabled]:hover:bg-transparent"
                       >
-                        <input
-                          type="checkbox"
+                        <ThemedCheckbox
                           data-testid={`custom-col-${colKey}`}
                           checked={checked}
                           onChange={() => handleToggleCustomColumn(colKey)}
-                          className="h-4 w-4 rounded border-mist-700 bg-mist-800 text-stone-100 accent-mist-500"
                         />
                         <span>{col.label}</span>
                         <Badge
@@ -992,7 +1048,7 @@ export function StocksRankingTable({
                 <h4 className="mb-2.5 text-xs font-bold uppercase tracking-wider text-stone-200">
                   Dados Gerais
                 </h4>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
                   {GENERAL_DATA_COLUMNS.map((colKey) => {
                     const col = ALL_COLUMNS_MAP[colKey];
                     const isLocked = colKey === 'pl' || colKey === 'pvp';
@@ -1000,15 +1056,13 @@ export function StocksRankingTable({
                     return (
                       <label
                         key={colKey}
-                        className="flex cursor-pointer items-center gap-2 text-xs font-medium text-stone-300 hover:text-stone-100"
+                        className="group/check -mx-2 flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-xs font-medium text-stone-300 transition-colors hover:bg-mist-900 hover:text-stone-100 has-[:disabled]:cursor-default has-[:disabled]:hover:bg-transparent"
                       >
-                        <input
-                          type="checkbox"
+                        <ThemedCheckbox
                           data-testid={`custom-col-${colKey}`}
                           checked={checked}
                           disabled={isLocked}
                           onChange={() => handleToggleCustomColumn(colKey)}
-                          className="h-4 w-4 rounded border-mist-700 bg-mist-800 text-stone-100 accent-mist-500"
                         />
                         <span>{col.label}</span>
                       </label>

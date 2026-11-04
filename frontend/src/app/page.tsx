@@ -135,7 +135,7 @@ export default function LandingHomePage() {
   const placeholder = selectedState.status === 'loading' ? '...' : '—';
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-mist-950 text-stone-100 antialiased font-sans flex flex-col selection:bg-mist-700 selection:text-stone-50">
+    <div className="relative min-h-screen overflow-x-clip bg-mist-950 text-stone-100 antialiased font-sans flex flex-col selection:bg-mist-700 selection:text-stone-50">
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
         </div>
 
@@ -472,19 +472,19 @@ export default function LandingHomePage() {
         </div>
       </section>
 
-      <div id="mercado" className="w-full bg-[#162026] py-16 sm:py-20 scroll-mt-16">
+      <div id="mercado" className="w-full bg-[#162026] py-16 sm:py-20 scroll-mt-6 sm:scroll-mt-2">
         <div className="mx-auto max-w-[1520px] px-4 sm:px-6 lg:px-8">
           <IbovMarketOverview />
         </div>
       </div>
 
-      <div id="rankings" className="w-full bg-[#24333c] py-16 sm:py-20 border-y border-[#384c59] scroll-mt-16">
+      <div id="rankings" className="w-full bg-[#24333c] py-16 sm:py-20 border-y border-[#384c59] scroll-mt-6 sm:scroll-mt-2">
         <div className="mx-auto max-w-[1520px] px-4 sm:px-6 lg:px-8">
           <LandingRankingsPreview />
         </div>
       </div>
 
-        <section id="metodologia" className="w-full bg-gradient-to-b from-[#18232a] via-[#18232a] to-[#141b20] py-16 sm:py-20 scroll-mt-16">
+        <section id="metodologia" className="w-full bg-gradient-to-b from-[#18232a] via-[#18232a] to-[#141b20] py-16 sm:py-20 scroll-mt-6 sm:scroll-mt-2">
         <div className="mx-auto max-w-[1520px] px-4 sm:px-6 lg:px-8 space-y-8">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div className="max-w-2xl space-y-2">
@@ -655,7 +655,7 @@ export default function LandingHomePage() {
         </div>
       </section>
 
-        <section id="projeto" className="w-full bg-[#141b20] py-16 sm:py-20 scroll-mt-16">
+        <section id="projeto" className="w-full bg-[#141b20] py-16 sm:py-20 scroll-mt-6 sm:scroll-mt-2">
         <div className="mx-auto max-w-[1520px] px-4 sm:px-6 lg:px-8 space-y-8">
           <div className="text-center max-w-3xl mx-auto space-y-2">
             <Badge
@@ -759,13 +759,13 @@ export default function LandingHomePage() {
         </div>
       </section>
 
-      <div id="noticias" className="w-full bg-[#273742] py-16 sm:py-20 border-y border-[#3a4f5d] scroll-mt-16">
+      <div id="noticias" className="w-full bg-[#273742] py-16 sm:py-20 border-y border-[#3a4f5d] scroll-mt-6 sm:scroll-mt-2">
         <div className="mx-auto max-w-[1520px] px-4 sm:px-6 lg:px-8">
           <MarketNewsSection />
         </div>
       </div>
 
-      <section id="faq" className="w-full bg-gradient-to-b from-[#0d1215] via-[#0d1215] to-mist-950 py-16 sm:py-20 scroll-mt-16">
+      <section id="faq" className="w-full bg-gradient-to-b from-[#0d1215] via-[#0d1215] to-mist-950 py-16 sm:py-20 scroll-mt-6 sm:scroll-mt-2">
         <div className="mx-auto max-w-[1520px] px-4 sm:px-6 lg:px-8 space-y-8">
           <div className="text-center max-w-2xl mx-auto space-y-2">
             <Badge

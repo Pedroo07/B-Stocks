@@ -187,7 +187,7 @@ export const FilterParamsSchema = z.object({
   sortBy: SortFieldEnum.default('marketCap'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
   page: z.number().min(1).default(1),
-  limit: z.number().min(10).max(200).default(50),
+  limit: z.number().min(10).max(200).default(20),
 });
 
 export type FilterParams = z.infer<typeof FilterParamsSchema>;

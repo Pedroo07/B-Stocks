@@ -30,7 +30,8 @@ test.describe('B3 Stocks Ranking Table, Dark Theme and Indicator Tooltips', () =
     await expect(page.getByTestId('clear-categories-btn')).toBeVisible();
     await page.getByTestId('clear-categories-btn').click();
 
-    await page.getByTestId('sort-select').selectOption('graham');
+    await page.getByTestId('sort-select').click();
+    await page.getByTestId('sort-option-graham').click();
     await expect(page.getByTestId('header-sort-btn-grahamMargin')).toContainText(
       '(Upside de Graham)',
     );

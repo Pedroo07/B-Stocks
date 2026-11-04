@@ -27,6 +27,23 @@ import {
   RefreshCw,
 } from 'lucide-react';
 
+function formatSyncAge(timestamp: string): string {
+  const diffMs = Date.now() - new Date(timestamp).getTime();
+  if (!Number.isFinite(diffMs)) return '';
+  const minutes = Math.max(0, Math.round(diffMs / 60_000));
+  if (minutes < 1) return 'agora';
+  if (minutes < 60) return `há ${minutes} min`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `há ${hours} h`;
+  const days = Math.round(hours / 24);
+  return `há ${days} ${days === 1 ? 'dia' : 'dias'}`;
+}
+
+function extractTickerCount(source: string): number | null {
+  const match = source.match(/(\d[\d.]*)\s*tickers?/i);
+  return match ? Number(match[1].replace(/\./g, '')) : null;
+}
+
 export default function TerminalPage() {
   const [summary, setSummary] = useState<MarketSummary | null>(null);
   const [stocks, setStocks] = useState<StockItem[]>([]);
@@ -57,7 +74,7 @@ export default function TerminalPage() {
     sortBy: 'marketCap',
     sortOrder: 'desc',
     page: 1,
-    limit: 50,
+    limit: 20,
   });
 
   const loadData = useCallback(async (currentFilters: FilterParams) => {
@@ -259,42 +276,59 @@ export default function TerminalPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <BrandLogo />
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               <Link href="/">
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
-                  className="h-8 rounded-lg border-mist-800 bg-mist-900 text-xs text-stone-300 hover:text-stone-100 hover:bg-mist-850 gap-1.5"
+                  className="h-9 rounded-lg px-3 text-xs font-semibold text-stone-400 hover:bg-mist-900 hover:text-stone-100 gap-1.5"
                 >
                   <ArrowLeft className="h-3.5 w-3.5" />
                   Tela Inicial
                 </Button>
               </Link>
 
-              {summary?.lastSync && (
-                <div className="hidden lg:block text-right text-[11px] text-stone-400">
-                  <div>Fonte: {summary.lastSync.source}</div>
-                  <div>
-                    Atualizado em:{' '}
-                    {new Date(summary.lastSync.timestamp).toLocaleString('pt-BR')}
+              <div className="flex h-9 items-center overflow-hidden rounded-lg border border-mist-800 bg-mist-900">
+                {summary?.lastSync && (
+                  <div
+                    data-testid="last-sync-status"
+                    title={`Fonte: ${summary.lastSync.source}\nAtualizado em: ${new Date(
+                      summary.lastSync.timestamp,
+                    ).toLocaleString('pt-BR')}`}
+                    className="hidden sm:flex h-full items-center gap-2 border-r border-mist-800 px-3 text-xs text-stone-400"
+                  >
+                    <span className="relative flex h-2 w-2">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+                    </span>
+                    {(() => {
+                      const count = extractTickerCount(summary.lastSync.source);
+                      return count ? (
+                        <span className="font-semibold text-stone-200 tabular-nums">
+                          {count.toLocaleString('pt-BR')} ativos
+                        </span>
+                      ) : null;
+                    })()}
+                    <span className="text-stone-500">·</span>
+                    <span className="tabular-nums">
+                      atualizado {formatSyncAge(summary.lastSync.timestamp)}
+                    </span>
                   </div>
-                </div>
-              )}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleSync}
-                disabled={syncing}
-                data-testid="sync-b3-button"
-                className="h-8 rounded-lg border-mist-800 bg-mist-900 text-stone-200 hover:bg-mist-850 hover:text-stone-100"
-              >
-                <RefreshCw
-                  className={`mr-1.5 h-3.5 w-3.5 ${syncing ? 'animate-spin' : ''}`}
-                />
-                {syncing ? 'Sincronizando B3...' : 'Sincronizar B3'}
-              </Button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleSync}
+                  disabled={syncing}
+                  data-testid="sync-b3-button"
+                  className="flex h-full items-center gap-1.5 px-3 text-xs font-semibold text-stone-200 transition-colors hover:bg-mist-800 hover:text-stone-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <RefreshCw
+                    className={`h-3.5 w-3.5 ${syncing ? 'animate-spin' : ''}`}
+                  />
+                  {syncing ? 'Sincronizando...' : 'Sincronizar B3'}
+                </button>
+              </div>
             </div>
           </div>
 
