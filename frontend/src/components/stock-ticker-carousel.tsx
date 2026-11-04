@@ -13,26 +13,7 @@ export interface TickerStockItem {
   logoUrl?: string;
 }
 
-const FAMOUS_STOCKS: TickerStockItem[] = [
-  { ticker: 'BBAS3', price: 16.06, changePercent: -2.02 },
-  { ticker: 'PETR4', price: 38.2, changePercent: 1.45 },
-  { ticker: 'VALE3', price: 62.5, changePercent: 0.8 },
-  { ticker: 'ITUB4', price: 34.15, changePercent: 0.55 },
-  { ticker: 'BBDC4', price: 14.2, changePercent: -0.65 },
-  { ticker: 'WEGE3', price: 52.1, changePercent: 2.15 },
-  { ticker: 'ABEV3', price: 12.8, changePercent: -0.4 },
-  { ticker: 'RENT3', price: 44.9, changePercent: 1.1 },
-  { ticker: 'TAEE11', price: 35.4, changePercent: 0.3 },
-  { ticker: 'EGIE3', price: 42.6, changePercent: -0.25 },
-  { ticker: 'PRIO3', price: 46.3, changePercent: 2.8 },
-  { ticker: 'BBSE3', price: 36.9, changePercent: 0.9 },
-  { ticker: 'CXSE3', price: 15.4, changePercent: 1.2 },
-  { ticker: 'VIVT3', price: 51.2, changePercent: 0.4 },
-  { ticker: 'CPLE6', price: 10.15, changePercent: 1.7 },
-  { ticker: 'CSNA3', price: 12.4, changePercent: -1.8 },
-  { ticker: 'RADL3', price: 26.7, changePercent: 0.6 },
-  { ticker: 'SUZB3', price: 56.8, changePercent: -0.9 },
-];
+type TickerStatus = 'loading' | 'ready' | 'unavailable';
 
 interface StockTickerCarouselProps {
   stocks?: TickerStockItem[];
@@ -40,56 +21,74 @@ interface StockTickerCarouselProps {
 
 export function StockTickerCarousel({ stocks }: StockTickerCarouselProps) {
   const [liveStocks, setLiveStocks] = useState<TickerStockItem[]>(
-    stocks || FAMOUS_STOCKS,
+    stocks || [],
+  );
+  const [status, setStatus] = useState<TickerStatus>(
+    stocks && stocks.length > 0 ? 'ready' : 'loading',
   );
 
   useEffect(() => {
     if (stocks && stocks.length > 0) {
       setLiveStocks(stocks);
+      setStatus('ready');
       return;
     }
 
     let isMounted = true;
     fetchMarketOverview('1D')
       .then((res) => {
-        if (!isMounted || !res.tickerTape || res.tickerTape.length === 0) {
+        if (!isMounted) {
           return;
         }
-        const mapped: TickerStockItem[] = res.tickerTape.map((item) => {
-          if (item.ticker === 'BBAS3') {
-            return {
-              ticker: 'BBAS3',
-              price: 16.06,
-              changePercent: -2.02,
-              logoUrl: item.logoUrl,
-            };
-          }
-          return {
-            ticker: item.ticker,
-            price: item.price,
-            changePercent: item.change24h || 0,
-            logoUrl: item.logoUrl,
-          };
-        });
-        if (!mapped.some((s) => s.ticker === 'BBAS3')) {
-          mapped.unshift({ ticker: 'BBAS3', price: 16.06, changePercent: -2.02 });
+        if (!res.tickerTape || res.tickerTape.length === 0) {
+          setStatus('unavailable');
+          return;
         }
+        const mapped: TickerStockItem[] = res.tickerTape.map((item) => ({
+          ticker: item.ticker,
+          price: item.price,
+          changePercent: item.change24h || 0,
+          logoUrl: item.logoUrl,
+        }));
         setLiveStocks(mapped);
+        setStatus('ready');
       })
-      .catch(() => {});
+      .catch(() => {
+        if (isMounted) {
+          setStatus('unavailable');
+        }
+      });
 
     return () => {
       isMounted = false;
     };
   }, [stocks]);
 
+  if (status !== 'ready' || liveStocks.length === 0) {
+    return (
+      <div
+        data-testid="stock-ticker-carousel"
+        data-status={status}
+        className="relative w-full overflow-hidden border-y border-mist-800/80 bg-mist-950/90 py-3 backdrop-blur-md"
+        aria-live="polite"
+      >
+        <p className="text-center text-xs font-semibold text-stone-400">
+          {status === 'loading'
+            ? 'Carregando cotações...'
+            : 'Cotações indisponíveis no momento.'}
+        </p>
+      </div>
+    );
+  }
+
   const displayList = [...liveStocks, ...liveStocks];
 
   return (
     <div
       data-testid="stock-ticker-carousel"
+      data-status={status}
       className="relative w-full overflow-hidden border-y border-mist-800/80 bg-mist-950/90 py-3 backdrop-blur-md"
-      aria-label="Cotações em tempo real das principais ações da B3"
+      aria-label="Cotações das principais ações da B3"
     >
       <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-mist-950 to-transparent" />
       <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-mist-950 to-transparent" />
@@ -109,6 +108,7 @@ export function StockTickerCarousel({ stocks }: StockTickerCarouselProps) {
             <Link
               href={`/terminal?search=${encodeURIComponent(item.ticker)}`}
               key={`${item.ticker}-${index}`}
+              data-testid="stock-ticker-item"
               className="group inline-flex items-center gap-2.5 rounded-lg border border-mist-800/80 bg-mist-900/75 px-3.5 py-1.5 text-xs font-semibold tracking-wide text-stone-200 transition-all hover:border-mist-700 hover:bg-mist-900"
             >
               <CompanyLogo

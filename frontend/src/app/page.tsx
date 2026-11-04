@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,8 @@ import { LandingRankingsPreview } from '@/components/landing-rankings-preview';
 import { MarketNewsSection } from '@/components/market-news-section';
 import { CompanyLogo } from '@/components/company-logo';
 import { BrandLogo } from '@/components/brand-logo';
+import { fetchStockDetails } from '@/lib/api';
+import type { StockItem } from '@/lib/schemas';
 import {
   Activity,
   ArrowRight,
@@ -32,93 +34,38 @@ import {
   Zap,
 } from 'lucide-react';
 
-interface ShowcaseStock {
+interface ShowcaseTicker {
   ticker: string;
   companyName: string;
   sector: string;
-  price: number;
-  dy: number;
-  pl: number;
-  pvp: number;
-  roe: number;
-  bazinCeiling: number;
-  bazinUpside: number;
-  grahamFair: number;
-  grahamUpside: number;
-  score: number;
-  verdict: string;
 }
 
-const SHOWCASE_STOCKS: ShowcaseStock[] = [
-  {
-    ticker: 'BBAS3',
-    companyName: 'BANCO DO BRASIL S.A.',
-    sector: 'Bancos',
-    price: 16.06,
-    dy: 10.42,
-    pl: 4.35,
-    pvp: 0.78,
-    roe: 20.8,
-    bazinCeiling: 24.8,
-    bazinUpside: 54.42,
-    grahamFair: 28.9,
-    grahamUpside: 79.95,
-    score: 94,
-    verdict:
-      'Múltiplos descontados frente ao ROE histórico de 20,8%, amplo upside nos modelos de Bazin (6%) e Benjamin Graham.',
-  },
+// Only identity metadata is static. Every number shown in the showcase card
+// comes from the backend (`GET /stocks/:ticker`) at runtime.
+const SHOWCASE_TICKERS: ShowcaseTicker[] = [
+  { ticker: 'BBAS3', companyName: 'BANCO DO BRASIL S.A.', sector: 'Bancos' },
   {
     ticker: 'PETR4',
     companyName: 'PETROBRAS PN',
     sector: 'Petróleo, Gás e Biocombustíveis',
-    price: 38.2,
-    dy: 14.85,
-    pl: 4.1,
-    pvp: 1.18,
-    roe: 28.4,
-    bazinCeiling: 58.5,
-    bazinUpside: 53.14,
-    grahamFair: 54.6,
-    grahamUpside: 42.93,
-    score: 92,
-    verdict:
-      'Forte geração de caixa livre e distribuição consistente de proventos com Dívida Líquida/EBITDA controlada abaixo de 1,2x.',
   },
-  {
-    ticker: 'WEGE3',
-    companyName: 'WEG S.A.',
-    sector: 'Bens Industriais',
-    price: 52.1,
-    dy: 1.85,
-    pl: 31.4,
-    pvp: 10.2,
-    roe: 32.6,
-    bazinCeiling: 18.9,
-    bazinUpside: -63.72,
-    grahamFair: 26.4,
-    grahamUpside: -49.33,
-    score: 81,
-    verdict:
-      'Compounder de altíssima rentabilidade (ROE > 32%) e caixa líquido, negociada com prêmio de qualidade frente a Graham.',
-  },
-  {
-    ticker: 'TAEE11',
-    companyName: 'TAESA UNT',
-    sector: 'Energia Elétrica',
-    price: 35.4,
-    dy: 9.8,
-    pl: 8.6,
-    pvp: 1.75,
-    roe: 20.3,
-    bazinCeiling: 48.2,
-    bazinUpside: 36.15,
-    grahamFair: 41.8,
-    grahamUpside: 18.08,
-    score: 88,
-    verdict:
-      'Receita previsível corrigida por inflação (RAP) em concessões de transmissão elétrica, ideal para carteira previdenciária.',
-  },
+  { ticker: 'WEGE3', companyName: 'WEG S.A.', sector: 'Bens Industriais' },
+  { ticker: 'TAEE11', companyName: 'TAESA UNT', sector: 'Energia Elétrica' },
 ];
+
+type ShowcaseState =
+  | { status: 'loading' }
+  | { status: 'ready'; data: StockItem }
+  | { status: 'unavailable' };
+
+const formatBRL = (value: number) =>
+  value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+const formatDecimal = (value: number, digits: number) =>
+  value.toFixed(digits).replace('.', ',');
+
+const formatUpside = (value: number) =>
+  `${value >= 0 ? '+' : ''}${formatDecimal(value, 1)}%`;
 
 const FAQ_ITEMS = [
   {
@@ -144,9 +91,48 @@ const FAQ_ITEMS = [
 ];
 
 export default function LandingHomePage() {
-  const [selectedShowcase, setSelectedShowcase] = useState<ShowcaseStock>(
-    SHOWCASE_STOCKS[0],
+  const [selectedShowcase, setSelectedShowcase] = useState<ShowcaseTicker>(
+    SHOWCASE_TICKERS[0],
   );
+  const [showcaseData, setShowcaseData] = useState<
+    Record<string, ShowcaseState>
+  >(() =>
+    Object.fromEntries(
+      SHOWCASE_TICKERS.map((item) => [item.ticker, { status: 'loading' }]),
+    ),
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+    SHOWCASE_TICKERS.forEach(({ ticker }) => {
+      fetchStockDetails(ticker)
+        .then((data) => {
+          if (isMounted) {
+            setShowcaseData((prev) => ({
+              ...prev,
+              [ticker]: { status: 'ready', data },
+            }));
+          }
+        })
+        .catch(() => {
+          if (isMounted) {
+            setShowcaseData((prev) => ({
+              ...prev,
+              [ticker]: { status: 'unavailable' },
+            }));
+          }
+        });
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const selectedState: ShowcaseState = showcaseData[selectedShowcase.ticker] ?? {
+    status: 'loading',
+  };
+  const live = selectedState.status === 'ready' ? selectedState.data : null;
+  const placeholder = selectedState.status === 'loading' ? '...' : '—';
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-mist-950 text-stone-100 antialiased font-sans flex flex-col selection:bg-mist-700 selection:text-stone-50">
@@ -273,7 +259,7 @@ export default function LandingHomePage() {
             <div className="lg:col-span-5">
               <div className="rounded-2xl border border-mist-700/80 bg-mist-900/90 p-5 shadow-2xl backdrop-blur-xl">
                 <div className="mt-3 grid grid-cols-4 gap-1.5">
-                  {SHOWCASE_STOCKS.map((item) => {
+                  {SHOWCASE_TICKERS.map((item) => {
                     const active = item.ticker === selectedShowcase.ticker;
                     return (
                       <button
@@ -324,10 +310,7 @@ export default function LandingHomePage() {
                         Cotação Atual
                       </div>
                       <div className="text-xl font-black text-stone-100 tabular-nums">
-                        {selectedShowcase.price.toLocaleString('pt-BR', {
-                          style: 'currency',
-                          currency: 'BRL',
-                        })}
+                        {live ? formatBRL(live.price) : placeholder}
                       </div>
                     </div>
                   </div>
@@ -340,27 +323,23 @@ export default function LandingHomePage() {
                       </div>
                       <div className="mt-1 flex items-baseline justify-between">
                         <strong className="text-base font-black text-stone-100 tabular-nums">
-                          {selectedShowcase.bazinCeiling.toLocaleString(
-                            'pt-BR',
-                            {
-                              style: 'currency',
-                              currency: 'BRL',
-                            },
-                          )}
+                          {live && live.bazinCeilingPrice > 0
+                            ? formatBRL(live.bazinCeilingPrice)
+                            : live
+                              ? 'N/A'
+                              : placeholder}
                         </strong>
-                        <span
-                          className={`text-xs font-extrabold tabular-nums ${
-                            selectedShowcase.bazinUpside >= 0
-                              ? 'text-emerald-400'
-                              : 'text-red-400'
-                          }`}
-                        >
-                          {selectedShowcase.bazinUpside >= 0 ? '+' : ''}
-                          {selectedShowcase.bazinUpside
-                            .toFixed(1)
-                            .replace('.', ',')}
-                          %
-                        </span>
+                        {live && live.bazinCeilingPrice > 0 && (
+                          <span
+                            className={`text-xs font-extrabold tabular-nums ${
+                              live.bazinMargin >= 0
+                                ? 'text-emerald-400'
+                                : 'text-red-400'
+                            }`}
+                          >
+                            {formatUpside(live.bazinMargin)}
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -371,24 +350,23 @@ export default function LandingHomePage() {
                       </div>
                       <div className="mt-1 flex items-baseline justify-between">
                         <strong className="text-base font-black text-stone-100 tabular-nums">
-                          {selectedShowcase.grahamFair.toLocaleString('pt-BR', {
-                            style: 'currency',
-                            currency: 'BRL',
-                          })}
+                          {live && live.grahamFairPrice > 0
+                            ? formatBRL(live.grahamFairPrice)
+                            : live
+                              ? 'N/A'
+                              : placeholder}
                         </strong>
-                        <span
-                          className={`text-xs font-extrabold tabular-nums ${
-                            selectedShowcase.grahamUpside >= 0
-                              ? 'text-emerald-400'
-                              : 'text-red-400'
-                          }`}
-                        >
-                          {selectedShowcase.grahamUpside >= 0 ? '+' : ''}
-                          {selectedShowcase.grahamUpside
-                            .toFixed(1)
-                            .replace('.', ',')}
-                          %
-                        </span>
+                        {live && live.grahamFairPrice > 0 && (
+                          <span
+                            className={`text-xs font-extrabold tabular-nums ${
+                              live.grahamMargin >= 0
+                                ? 'text-emerald-400'
+                                : 'text-red-400'
+                            }`}
+                          >
+                            {formatUpside(live.grahamMargin)}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -399,7 +377,7 @@ export default function LandingHomePage() {
                         P/L
                       </span>
                       <strong className="font-bold text-stone-200 tabular-nums">
-                        {selectedShowcase.pl.toFixed(1).replace('.', ',')}
+                        {live ? formatDecimal(live.pl, 1) : placeholder}
                       </strong>
                     </div>
                     <div>
@@ -407,7 +385,7 @@ export default function LandingHomePage() {
                         P/VP
                       </span>
                       <strong className="font-bold text-stone-200 tabular-nums">
-                        {selectedShowcase.pvp.toFixed(1).replace('.', ',')}
+                        {live ? formatDecimal(live.pvp, 1) : placeholder}
                       </strong>
                     </div>
                     <div>
@@ -415,7 +393,7 @@ export default function LandingHomePage() {
                         DY 12m
                       </span>
                       <strong className="font-bold text-emerald-400 tabular-nums">
-                        {selectedShowcase.dy.toFixed(2).replace('.', ',')}%
+                        {live ? `${formatDecimal(live.dy, 2)}%` : placeholder}
                       </strong>
                     </div>
                     <div>
@@ -423,14 +401,18 @@ export default function LandingHomePage() {
                         Score B&amp;H
                       </span>
                       <strong className="font-black text-emerald-400 tabular-nums">
-                        {selectedShowcase.score}/100
+                        {live ? `${Math.round(live.scoreTotal)}/100` : placeholder}
                       </strong>
                     </div>
                   </div>
 
                   <div className="mt-3 rounded-lg border border-mist-700 bg-mist-800/60 p-2.5 text-[11px] leading-relaxed text-stone-300">
                     <strong className="text-stone-100">Síntese Quant: </strong>
-                    {selectedShowcase.verdict}
+                    {live
+                      ? `${live.thematicCategory} · ${live.technicalTrend} · ${live.cutFilterReason}.`
+                      : selectedState.status === 'loading'
+                        ? 'Carregando dados do motor B-Stocks...'
+                        : 'Dados indisponíveis no momento.'}
                   </div>
                 </div>
 

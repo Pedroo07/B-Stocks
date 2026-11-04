@@ -11,7 +11,12 @@ test.describe('Landing Page and Terminal Market Summary UI', () => {
 
     const tickerEl = page.getByTestId('stock-ticker-carousel');
     await expect(tickerEl).toBeVisible();
-    await expect(tickerEl).toContainText('BBAS3');
+    await expect(tickerEl).toHaveAttribute('data-status', 'ready', {
+      timeout: 15000,
+    });
+    await expect(
+      tickerEl.getByTestId('stock-ticker-item').first(),
+    ).toContainText(/R\$\s?\d/);
 
     const ibovOverview = page.getByTestId('ibov-market-overview');
     await expect(ibovOverview).toBeVisible();
